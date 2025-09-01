@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 10 Tracker</title>
+<style>
+  :root{
+    --bg:#0c3b78;
+    --bg-dark:#092c59;
+    --panel:#0e4aa3;
+    --panel-2:#0c3f8a;
+    --text:#f3f7ff;
+    --muted:#c7d4ef;
+    --accent:#7fc4ff;
+    --ok:#21c37a;
+    --warn:#ffd166;
+    --bad:#ff5d5d;
+    --table-border: rgba(255,255,255,.12);
+    --row-alt: rgba(255,255,255,.06);
+    --shadow: 0 8px 24px rgba(0,0,0,.25);
+    --radius: 16px;
+  }
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Noto Sans',sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 10% -20%, #2a64c7 0%, transparent 60%),
+      radial-gradient(1000px 700px at 120% 20%, #1a5bc3 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-dark) 80%);
+    min-height:100%;
+  }
+  header{
+    display:flex; gap:16px; align-items:center; justify-content:space-between;
+    padding:24px 24px 8px 24px;
+  }
+  h1{font-size: clamp(20px, 2.6vw, 28px); margin:0; letter-spacing:.3px;}
+  .controls{
+    display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+  }
+  .panel{
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--table-border);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:16px;
+    padding:16px 24px 24px 24px;
+  }
+  @media (min-width: 980px){
+    .grid{grid-template-columns: 2fr 1fr;}
+  }
+  .add-player{
+    display:flex; gap:8px; align-items:center; padding:12px; border-radius:12px;
+    background: rgba(255,255,255,.06);
+  }
+  input[type="text"], input[type="number"], select, button{
+    border-radius:10px; border:1px solid var(--table-border);
+    background: rgba(255,255,255,.08);
+    color:var(--text); padding:10px 12px; font-size:14px;
+  }
+  input[type="number"]{ width:100px; }
+  button{
+    cursor:pointer; transition: transform .05s ease, filter .2s ease, background .2s ease;
+    backdrop-filter: blur(2px);
+  }
+  button:hover{ filter: brightness(1.08); }
+  button:active{ transform: translateY(1px); }
+  .btn{
+    background: linear-gradient(180deg, #58a8ff, #3a8ef6);
+    border: none; color:#001230; font-weight:600;
+  }
+  .btn-ghost{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
+  .btn-danger{ background: linear-gradient(180deg, #ff7b7b, #ff4d4d); border: none; color:#2b0000; }
+  .btn-ok{ background: linear-gradient(180deg, #2ed98a, #1db874); border: none; color:#002a16; }
+  .btn-warn{ background: linear-gradient(180deg, #ffd166, #ffb703); border: none; color:#3a2100; }
+  .table-wrap{
+    overflow:auto; border-radius:12px; border:1px solid var(--table-border);
+    background: rgba(255,255,255,.06);
+  }
+  table{ width:100%; border-collapse:separate; border-spacing:0; min-width: 780px; }
+  thead th{
+    position: sticky; top:0; z-index:5;
+    background: rgba(6,20,58,.7);
+    backdrop-filter: blur(6px);
+    text-align:left; font-weight:600; font-size:13px; padding:12px;
+    border-bottom:1px solid var(--table-border);
+  }
+  tbody td{
+    font-size:14px; padding:10px 12px; border-bottom:1px solid var(--table-border);
+  }
+  tbody tr:nth-child(odd){ background: var(--row-alt); }
+  .cell-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .phase-badge{
+    padding:4px 8px; border-radius:999px; font-weight:700; font-size:12px;
+    background: rgba(255,255,255,.12); border:1px solid var(--table-border);
+  }
+  .total-badge{
+    padding:6px 10px; border-radius:10px; font-weight:800; font-size:14px;
+    background: #031a42; border:1px solid var(--table-border);
+  }
+  .muted{ color: var(--muted); font-size:12px; }
+  .footer{
+    display:flex; justify-content:space-between; align-items:center; padding:8px 24px 24px 24px;
+    color:var(--muted);
+  }
+  .pill{ padding:8px 10px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid var(--table-border); }
+  /* Modal */
+  dialog{
+    border:none; border-radius: 16px; padding:0;
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    color:var(--text);
+    width:min(920px, 92vw);
+    box-shadow: var(--shadow);
+  }
+  dialog::backdrop{ background: rgba(0,8,22,.7); backdrop-filter: blur(2px); }
+  .modal-header{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--table-border); }
+  .modal-body{ padding:18px; }
+  .calc-grid{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;
+  }
+  @media (max-width: 760px){ .calc-grid{ grid-template-columns: repeat(2, 1fr);} }
+  .card{
+    border:1px solid var(--table-border); border-radius:12px; padding:10px; background: rgba(255,255,255,.06);
+  }
+  .card h4{ margin:0 0 6px 0; font-size:13px; color:var(--muted); }
+  .row{ display:flex; gap:8px; align-items:center; justify-content:space-between; }
+  .row input[type="number"]{ width:90px; }
+  .totals{
+    display:flex; gap:14px; align-items:center; justify-content:flex-end; margin-top:12px;
+  }
+  .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
+  .tiny{ font-size:11px; color:var(--muted); }
+  .help{ font-size:12px; color:var(--muted); }
+  .phase-list{ display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; }
+  @media (max-width: 760px){ .phase-list{ grid-template-columns: 1fr; } }
+  .phase-item{ padding:8px; border:1px dashed var(--table-border); border-radius:8px; font-size:13px; }
+  .link{ color: var(--accent); text-decoration: underline; cursor: pointer; }
+</style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c3b78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Phase 10">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+</head>
+<body>
+  <header>
+    <h1>Phase 10 — Score & Phase Tracker</h1>
+    <div class="controls">
+      <button class="btn" id="addRowBtn">+ Add player</button>
+      <button class="btn-ghost" id="resetBtn" title="Clear all data">Reset</button>
+      <span class="pill tiny">Data saves automatically to this browser</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="table-wrap">
+        <table id="scoreTable" aria-label="Phase 10 scoreboard">
+          <thead>
+            <tr>
+              <th style="width: 18ch;">Player</th>
+              <th>Phase</th>
+              <th>Made Phase?</th>
+              <th>Round Points</th>
+              <th>Total</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="footer">
+        <div class="help">Tip: Click <span class="kbd">Calculator</span> to tally leftover cards. Click <span class="kbd">Advance</span> when a player completes a phase.</div>
+        <div class="help">Scoring mode: 
+          <select id="scoringMode">
+            <option value="standard">Standard (1–9 = 5, 10–12 = 10, Skip = 15, Wild = 25)</option>
+            <option value="facevalue">Face Value (1–12 = face value, Skip/Wild = 25)</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <span id="modeHint" class="tiny"></span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" style="padding:16px 18px;">
+      <h3 style="margin-top:4px;">Quick Add Players</h3>
+      <div class="add-player">
+        <input id="quickNames" type="text" placeholder="e.g., Alice, Ben, Charlie" />
+        <button class="btn" id="quickAddBtn">Add</button>
+      </div>
+      <p class="help" style="margin:10px 0 14px;">We’ll start everyone on Phase 1 with 0 points. You can edit anytime.</p>
+      <h3>Phases (reference)</h3>
+      <div class="phase-list" id="phaseList"></div>
+      <p class="tiny" style="margin-top:10px;">You can play house rules — this tracker doesn’t enforce phase validity.</p>
+      <hr style="border-color: var(--table-border); border-style: solid; border-width: 0 0 1px; margin:14px 0;">
+      <h3>Export / Import</h3>
+      <div class="row" style="gap:8px;">
+        <button class="btn-ghost" id="exportBtn">Export JSON</button>
+        <input id="importFile" type="file" accept="application/json" />
+      </div>
+      <p class="tiny">Use this to continue a game on another device/browser.</p>
+      <hr style="border-color: var(--table-border); border-style: solid; border-width: 0 0 1px; margin:14px 0;">
+      <h3>Shortcuts</h3>
+      <p class="tiny">On the calculator: <span class="kbd">Esc</span> closes • <span class="kbd">Enter</span> saves</p>
+    </aside>
+  </div>
+
+  <!-- Calculator Modal -->
+  <dialog id="calcModal">
+    <div class="modal-header">
+      <strong id="calcTitle">Round Calculator</strong>
+      <button class="btn-ghost" id="closeCalc">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="row" style="justify-content:flex-start; gap:12px; margin-bottom:8px;">
+        <label><input type="checkbox" id="wentOut"> Player went out (0 points this round)</label>
+        <span class="tiny">If checked, round points are set to 0.</span>
+      </div>
+      <div class="calc-grid" id="calcGrid"></div>
+      <div class="totals">
+        <span class="help">Mode: <strong id="modeLabel">Standard</strong></span>
+        <strong>Total this round: <span class="total-badge" id="roundTotal">0</span></strong>
+        <button class="btn-ok" id="applyCalc">Apply</button>
+      </div>
+      <details style="margin-top:10px;">
+        <summary>Custom scoring values</summary>
+        <div class="row" style="flex-wrap:wrap; gap:8px; margin-top:8px;" id="customRow"></div>
+        <p class="tiny">These only apply when the scoring mode is set to <em>Custom…</em></p>
+      </details>
+    </div>
+  </dialog>
+
+<script>
+  const el = (q,root=document)=>root.querySelector(q);
+  const els = (q,root=document)=>[...root.querySelectorAll(q)];
+  const tbody = el('#tbody');
+  const phaseRef = [
+    "2 sets of 3",
+    "1 set of 3 + 1 run of 4",
+    "1 set of 4 + 1 run of 4",
+    "1 run of 7",
+    "1 run of 8",
+    "1 run of 9",
+    "2 sets of 4",
+    "7 cards of one color",
+    "1 set of 5 + 1 set of 2",
+    "1 set of 5 + 1 set of 3"
+  ];
+  // Render phase reference
+  const phaseList = el('#phaseList');
+  phaseRef.forEach((txt,i)=>{
+    const d=document.createElement('div');
+    d.className='phase-item';
+    d.textContent = `Phase ${i+1}: ${txt}`;
+    phaseList.appendChild(d);
+  });
+
+  // Scoring presets
+  const scoringPresets = {
+    standard: {
+      name: 'Standard',
+      points: { // per card
+        wild:25, skip:15,
+        // numbers
+        n1:5,n2:5,n3:5,n4:5,n5:5,n6:5,n7:5,n8:5,n9:5,
+        n10:10,n11:10,n12:10
+      },
+      hint: 'Common house rules: 1–9 = 5, 10–12 = 10, Skip = 15, Wild = 25.'
+    },
+    facevalue: {
+      name: 'Face Value',
+      points: {
+        wild:25, skip:25,
+        n1:1,n2:2,n3:3,n4:4,n5:5,n6:6,n7:7,n8:8,n9:9,n10:10,n11:11,n12:12
+      },
+      hint: 'Numbered cards are face value; Skip/Wild are 25.'
+    },
+    custom: {
+      name: 'Custom',
+      points: {},
+      hint: 'Set your own values below.'
+    }
+  };
+
+  // State
+  let state = JSON.parse(localStorage.getItem('phase10-state')||'{"players":[], "mode":"standard", "custom":{}}');
+
+  function save(){ localStorage.setItem('phase10-state', JSON.stringify(state)); }
+
+  // UI helpers
+  function render(){
+    // scoring mode UI
+    el('#scoringMode').value = state.mode || 'standard';
+    el('#modeHint').textContent = scoringPresets[state.mode]?.hint || '';
+    // table
+    tbody.innerHTML='';
+    state.players.forEach((p,idx)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>
+          <input type="text" value="${p.name||''}" data-idx="${idx}" data-field="name" aria-label="Player name">
+          <div class="tiny muted">Added: ${new Date(p.added||Date.now()).toLocaleString()}</div>
+        </td>
+        <td><span class="phase-badge">Phase ${p.phase||1}</span></td>
+        <td>
+          <label class="tiny"><input type="checkbox" ${p.madePhase?'checked':''} data-idx="${idx}" data-field="madePhase"> Completed this round</label>
+        </td>
+        <td>
+          <div class="row">
+            <input type="number" inputmode="numeric" min="0" value="${p.round||0}" data-idx="${idx}" data-field="round" aria-label="Round points">
+            <button class="btn-ghost" data-action="calc" data-idx="${idx}">Calculator</button>
+          </div>
+        </td>
+        <td><span class="total-badge">${p.total||0}</span></td>
+        <td class="cell-actions">
+          <button class="btn-ok" data-action="applyRound" data-idx="${idx}">Add to total</button>
+          <button class="btn-warn" data-action="advance" data-idx="${idx}">Advance</button>
+          <button class="btn-danger" data-action="remove" data-idx="${idx}">Remove</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addPlayer(name=''){
+    state.players.push({name, phase:1, madePhase:false, round:0, total:0, added:Date.now()});
+    save(); render();
+  }
+
+  function removePlayer(idx){ state.players.splice(idx,1); save(); render(); }
+
+  // Event delegation for table
+  tbody.addEventListener('input', (e)=>{
+    const t=e.target;
+    const idx = +t.dataset.idx;
+    const field = t.dataset.field;
+    if (Number.isInteger(idx) && field){
+      if (field==='round'){
+        state.players[idx][field]=Math.max(0, parseInt(t.value||'0',10));
+      } else if (field==='name'){
+        state.players[idx][field]=t.value;
+      }
+      save();
+    }
+  });
+  tbody.addEventListener('change', (e)=>{
+    const t=e.target;
+    const idx=+t.dataset.idx;
+    const field=t.dataset.field;
+    if (field==='madePhase'){ state.players[idx].madePhase = t.checked; save(); }
+  });
+  tbody.addEventListener('click', (e)=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    const idx = +btn.dataset.idx;
+    const action = btn.dataset.action;
+    if (action==='remove'){ removePlayer(idx); return; }
+    if (action==='advance'){
+      // advance only if marked madePhase; otherwise just increment phase
+      if (state.players[idx].madePhase){ state.players[idx].phase = Math.min(10, (state.players[idx].phase||1)+1); state.players[idx].madePhase=false; }
+      else { state.players[idx].phase = Math.min(10, (state.players[idx].phase||1)+1); }
+      save(); render(); return;
+    }
+    if (action==='applyRound'){
+      const p=state.players[idx];
+      const add = +p.round||0;
+      p.total = (p.total||0) + add;
+      p.round = 0;
+      save(); render(); return;
+    }
+    if (action==='calc'){
+      openCalculator(idx);
+      return;
+    }
+  });
+
+  // Add controls
+  el('#addRowBtn').addEventListener('click', ()=> addPlayer(''));
+  el('#resetBtn').addEventListener('click', ()=>{
+    if (confirm('Clear all players and scores?')){
+      state = {players:[], mode:'standard', custom: state.custom||{}};
+      save(); render();
+    }
+  });
+  el('#quickAddBtn').addEventListener('click', ()=>{
+    const raw = el('#quickNames').value.trim();
+    if (!raw) return;
+    raw.split(',').map(s=>s.trim()).filter(Boolean).forEach(name=>addPlayer(name));
+    el('#quickNames').value='';
+  });
+
+  // Export/Import
+  el('#exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='phase10-game.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  el('#importFile').addEventListener('change', (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const data=JSON.parse(r.result);
+        if (data && Array.isArray(data.players)){ state = data; save(); render(); }
+        else alert('Invalid file');
+      }catch(err){ alert('Could not parse file'); }
+    };
+    r.readAsText(file);
+  });
+
+  // Scoring mode
+  const scoringModeSel = el('#scoringMode');
+  scoringModeSel.addEventListener('change', ()=>{
+    state.mode = scoringModeSel.value;
+    save(); render();
+  });
+
+  // Calculator
+  const calcModal = el('#calcModal');
+  const calcGrid = el('#calcGrid');
+  const customRow = el('#customRow');
+  const roundTotal = el('#roundTotal');
+  const modeLabel = el('#modeLabel');
+  const wentOut = el('#wentOut');
+  let calcIndex = -1;
+  let calcCounts = {}; // counts per card
+
+  function currentPointsMap(){
+    if (state.mode==='custom'){ return Object.assign({}, scoringPresets.custom.points, state.custom||{}); }
+    return scoringPresets[state.mode].points;
+    }
+
+  function buildCalculator(){
+    const pmap = currentPointsMap();
+    calcGrid.innerHTML='';
+    calcCounts = {wild:0, skip:0,
+      n1:0,n2:0,n3:0,n4:0,n5:0,n6:0,n7:0,n8:0,n9:0,n10:0,n11:0,n12:0};
+    const sections = [
+      {title:"Numbered Cards", keys:["n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11","n12"]},
+      {title:"Special Cards", keys:["skip","wild"]},
+    ];
+    sections.forEach(sec=>{
+      const card = document.createElement('div');
+      card.className='card';
+      const h = document.createElement('h4'); h.textContent = sec.title; card.appendChild(h);
+      sec.keys.forEach(k=>{
+        const row = document.createElement('div'); row.className='row';
+        const label = document.createElement('label');
+        label.textContent = labelText(k);
+        const input = document.createElement('input');
+        input.type='number'; input.min='0'; input.value='0'; input.dataset.key=k;
+        input.addEventListener('input', ()=>{
+          calcCounts[k] = Math.max(0, parseInt(input.value||'0',10));
+          updateTotal();
+        });
+        const pts = document.createElement('span');
+        pts.className='tiny';
+        pts.textContent = pointText(k, pmap);
+        row.appendChild(label); row.appendChild(input); row.appendChild(pts);
+        card.appendChild(row);
+      });
+      calcGrid.appendChild(card);
+    });
+
+    // custom editors
+    customRow.innerHTML='';
+    Object.keys(scoringPresets.standard.points).concat(['wild','skip']).filter((v,i,a)=>a.indexOf(v)===i).forEach(k=>{
+      const wrap=document.createElement('div'); wrap.className='row';
+      const lab=document.createElement('label'); lab.textContent = labelText(k)+' =';
+      const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.value = (state.custom && state.custom[k]!=null) ? state.custom[k] : (scoringPresets.standard.points[k]||0);
+      inp.dataset.key=k;
+      inp.addEventListener('input',()=>{
+        state.custom = state.custom||{};
+        state.custom[k] = Math.max(0, parseInt(inp.value||'0',10));
+        save();
+        updateTotal();
+      });
+      wrap.appendChild(lab); wrap.appendChild(inp);
+      customRow.appendChild(wrap);
+    });
+
+    updateTotal();
+  }
+
+  function labelText(k){
+    if (k==='wild') return 'Wild cards';
+    if (k==='skip') return 'Skip cards';
+    const n = k.replace('n','');
+    return `Number ${n}`;
+  }
+  function pointText(k, map){
+    const v = map[k];
+    if (v==null) return '';
+    return `(${v} pts each)`;
+  }
+
+  function updateTotal(){
+    if (wentOut.checked){ roundTotal.textContent = '0'; return; }
+    const map = currentPointsMap();
+    let sum = 0;
+    for (const k in calcCounts){
+      const count = calcCounts[k]||0;
+      const val = (state.mode==='custom' ? (state.custom?.[k] ?? map[k] ?? 0) : (map[k] ?? 0));
+      sum += count * val;
+    }
+    roundTotal.textContent = String(sum);
+  }
+
+  function openCalculator(idx){
+    calcIndex = idx;
+    wentOut.checked = false;
+    buildCalculator();
+    modeLabel.textContent = scoringPresets[state.mode]?.name || 'Custom';
+    el('#calcTitle').textContent = `Round Calculator — ${state.players[idx].name || 'Player ' + (idx+1)}`;
+    calcModal.showModal();
+  }
+  el('#applyCalc').addEventListener('click', ()=>{
+    if (calcIndex<0) return;
+    const sum = wentOut.checked ? 0 : parseInt(roundTotal.textContent,10)||0;
+    state.players[calcIndex].round = sum;
+    save(); render();
+    calcModal.close();
+  });
+  el('#closeCalc').addEventListener('click', ()=>calcModal.close());
+  window.addEventListener('keydown', (e)=>{
+    if (e.key==='Escape' && calcModal.open) calcModal.close();
+    if (e.key==='Enter' && calcModal.open){ e.preventDefault(); el('#applyCalc').click(); }
+  });
+
+  // Init
+  if (!state.mode){ state.mode='standard'; save(); }
+  render();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  });
+}
+</script>
+
+</body>
+</html>
